@@ -238,7 +238,7 @@
     scene.setAttribute('mindar-image',
       `imageTargetSrc: ${mindUrl}; autoStart: false;` +
       ' uiLoading: no; uiError: no; uiScanning: no;' +
-      ' filterMinCF: 0.1; filterBeta: 10; warmupTolerance: 1; missTolerance: 5;'
+      ' filterMinCF: 0.001; filterBeta: 50; warmupTolerance: 2; missTolerance: 8;'
     );
     scene.setAttribute('color-space', 'sRGB');
     scene.setAttribute('renderer', 'colorManagement: true; physicallyCorrectLights: true');
@@ -279,7 +279,7 @@
         // Modelo pequeño en la mitad de arriba
         const model = document.createElement('a-entity');
         model.setAttribute('gltf-model', `url(${t.model_url})`);
-        model.setAttribute('position', '0 0.28 0.05');
+        model.setAttribute('position', '0 0.38 0.05');
         model.setAttribute('scale', '0.13 0.13 0.13');
         model.setAttribute('rotation', t.rotation || '0 0 0');
         model.setAttribute('animation', 'property: rotation.y; from: 0; to: 360; dur: 4000; easing: linear; loop: true');
@@ -290,7 +290,7 @@
         videoPlane.setAttribute('src', `#ar-vid-${i}`);
         videoPlane.setAttribute('width', '0.9');
         videoPlane.setAttribute('height', '0.506');
-        videoPlane.setAttribute('position', '0 -0.28 0');
+        videoPlane.setAttribute('position', '0 -0.38 0');
         anchor.appendChild(videoPlane);
 
       } else {
