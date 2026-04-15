@@ -5,11 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Experiencia AR</title>
 
-  <!-- MindAR: image bundle (expone Compiler) + Three.js integration -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
+  <!-- Three.js -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/GLTFLoader.js"></script>
+
+  <!-- 1) MindAR Three integration (UMD) → expone window.MINDAR.IMAGE.MindARThree -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
+  <!-- 2) Guardar MindARThree ANTES de que el módulo base lo sobreescriba -->
+  <script>
+    window.__MindARThree = window.MINDAR && window.MINDAR.IMAGE && window.MINDAR.IMAGE.MindARThree;
+  </script>
+  <!-- 3) MindAR base (ES module, diferido) → expone window.MINDAR.IMAGE.Compiler -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js"></script>
 
   <style>
     /* ── Reset & base ── */
@@ -538,14 +545,18 @@
        FUNCIÓN PRINCIPAL
     ════════════════════════════════════════ */
     async function iniciarAR() {
-      // Guardia: verificar que MindAR cargó correctamente
-      if (!window.MINDAR?.IMAGE?.Compiler) {
-        alert(
-          'Error: No se pudo cargar la biblioteca MindAR.\n\n' +
-          'Revisa tu conexión a internet y recarga la página.'
-        );
-        return;
-      }
+      // Guardia: esperar hasta que el módulo ES (diferido) haya expuesto Compiler
+      // El módulo corre después del DOM parse; si el usuario hace clic muy rápido,
+      // esperamos hasta 5 s con polling de 100 ms.
+      await new Promise((resolve, reject) => {
+        const MAX = 50; let n = 0;
+        const check = () => {
+          if (window.MINDAR?.IMAGE?.Compiler && window.__MindARThree) return resolve();
+          if (++n >= MAX) return reject(new Error('MindAR no cargó a tiempo. Revisa tu conexión y recarga.'));
+          setTimeout(check, 100);
+        };
+        check();
+      }).catch(err => { alert(err.message); throw err; });
 
       hide(screenLanding);
       show(screenLoader);
@@ -557,7 +568,7 @@
         /* ── Iniciar cámara ── */
         setLoaderMsg('Iniciando cámara...');
 
-        const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        const mindarThree = new window.__MindARThree({
           container:      screenAr,
           imageTargetSrc: targetBuffer, // ArrayBuffer en lugar de .mind
           uiLoading:  'no',
