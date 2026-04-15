@@ -5,14 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Experiencia AR</title>
 
-  <!--
-    ══════════════════════════════════════════════════════
-    SOLUCIÓN DEFINITIVA: A-Frame + MindAR via unpkg CDN
-    Esta es la integración oficial más estable.
-    No usa ES modules internos → sin SyntaxError.
-    ══════════════════════════════════════════════════════
-  -->
   <script src="https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js"></script>
+  <!-- aframe bundle incluye el Compiler internamente -->
   <script src="https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
@@ -178,7 +172,7 @@
 <div id="screen-ar" class="hidden" style="position:fixed;inset:0;z-index:10;">
 
   <a-scene id="ar-scene"
-    mindar-image="imageTargetSrc: ./flyer.jpg; autoStart: false; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 1000; warmupTolerance: 1; missTolerance: 10;"
+    mindar-image="imageTargetSrc: __PENDING__; autoStart: false; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 1000; warmupTolerance: 0; missTolerance: 5;"
     color-space="sRGB"
     renderer="colorManagement: true; physicallyCorrectLights: true"
     vr-mode-ui="enabled: false"
@@ -257,10 +251,46 @@
   btnStart.addEventListener('click', async () => {
     hide(screenLanding);
     show(screenLoader);
-    show(screenAr);
 
     try {
-      /* Esperar a que A-Frame cargue la escena */
+      /* ── 1. Compilar target en memoria con el Compiler de MindAR ── */
+      document.querySelector('.loader-text').textContent = 'Compilando imagen...';
+
+      const CACHE_KEY = 'ar_mind_v3';
+      let mindUrl;
+
+      const cached = (() => { try { return localStorage.getItem(CACHE_KEY); } catch(e){} })();
+      if (cached) {
+        document.querySelector('.loader-text').textContent = 'Cargando desde caché...';
+        const bytes = Uint8Array.from(atob(cached), c => c.charCodeAt(0));
+        mindUrl = URL.createObjectURL(new Blob([bytes.buffer], { type: 'application/octet-stream' }));
+      } else {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = './flyer.jpg';
+        await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('No se encontró flyer.jpg')); });
+
+        const compiler = new MINDAR.IMAGE.Compiler();
+        await compiler.compileImageTargets([img], p => {
+          document.querySelector('.loader-text').textContent = 'Compilando... ' + Math.round(p * 100) + '%';
+        });
+        const buffer = await compiler.exportData();
+
+        try {
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          localStorage.setItem(CACHE_KEY, b64);
+        } catch(e) {}
+
+        mindUrl = URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' }));
+      }
+
+      /* ── 2. Inyectar la URL compilada en la escena A-Frame ── */
+      arScene.setAttribute('mindar-image', 'imageTargetSrc', mindUrl);
+
+      show(screenAr);
+      document.querySelector('.loader-text').textContent = 'Iniciando cámara...';
+
+      /* ── 3. Esperar a que A-Frame cargue ── */
       await new Promise(resolve => {
         if (arScene.hasLoaded) return resolve();
         arScene.addEventListener('loaded', resolve, { once: true });
@@ -269,7 +299,7 @@
       hide(screenLoader);
       setStatus('searching');
 
-      /* Arrancar MindAR (autoStart: false → lo iniciamos aquí) */
+      /* ── 4. Arrancar MindAR ── */
       const mindarSystem = arScene.systems['mindar-image-system'];
       await mindarSystem.start();
 
