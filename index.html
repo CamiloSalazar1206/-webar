@@ -246,6 +246,10 @@
     scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
     scene.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
 
+    // Assets (necesario para videos)
+    const assets = document.createElement('a-assets');
+    scene.appendChild(assets);
+
     // Cámara
     const cam = document.createElement('a-camera');
     cam.setAttribute('position', '0 0 0');
@@ -257,14 +261,50 @@
       const anchor = document.createElement('a-entity');
       anchor.setAttribute('mindar-image-target', `targetIndex: ${t.targetIndex ?? i}`);
 
-      const model = document.createElement('a-entity');
-      model.dataset.targetIndex = t.targetIndex ?? i;
-      model.setAttribute('gltf-model', `url(${t.model_url})`);
-      model.setAttribute('position', t.position || '0 -0.5 0.1');
-      model.setAttribute('scale',    t.scale    || '0.3 0.3 0.3');
-      model.setAttribute('rotation', t.rotation || '0 0 0');
-      model.setAttribute('animation', 'property: rotation.y; from: 0; to: 360; dur: 4000; easing: linear; loop: true');
-      anchor.appendChild(model);
+      if (t.video_url) {
+        // ── Layout mixto: modelo arriba + video abajo ──
+
+        // Elemento <video> en assets para poder hacer play/pause
+        const videoEl = document.createElement('video');
+        videoEl.id = `ar-vid-${i}`;
+        videoEl.src = t.video_url;
+        videoEl.crossOrigin = 'anonymous';
+        videoEl.loop = true;
+        videoEl.playsInline = true;
+        videoEl.setAttribute('playsinline', '');
+        videoEl.preload = 'auto';
+        assets.appendChild(videoEl);
+        anchor.dataset.videoId = videoEl.id;
+
+        // Modelo pequeño en la mitad de arriba
+        const model = document.createElement('a-entity');
+        model.setAttribute('gltf-model', `url(${t.model_url})`);
+        model.setAttribute('position', '0 0.45 0.1');
+        model.setAttribute('scale', '0.18 0.18 0.18');
+        model.setAttribute('rotation', t.rotation || '0 0 0');
+        model.setAttribute('animation', 'property: rotation.y; from: 0; to: 360; dur: 4000; easing: linear; loop: true');
+        anchor.appendChild(model);
+
+        // Video plano en la mitad de abajo (proporción 16:9)
+        const videoPlane = document.createElement('a-video');
+        videoPlane.setAttribute('src', `#ar-vid-${i}`);
+        videoPlane.setAttribute('width', '0.9');
+        videoPlane.setAttribute('height', '0.506');
+        videoPlane.setAttribute('position', '0 -0.3 0');
+        anchor.appendChild(videoPlane);
+
+      } else {
+        // ── Solo modelo 3D ──
+        const model = document.createElement('a-entity');
+        model.dataset.targetIndex = t.targetIndex ?? i;
+        model.setAttribute('gltf-model', `url(${t.model_url})`);
+        model.setAttribute('position', t.position || '0 -0.5 0.1');
+        model.setAttribute('scale',    t.scale    || '0.3 0.3 0.3');
+        model.setAttribute('rotation', t.rotation || '0 0 0');
+        model.setAttribute('animation', 'property: rotation.y; from: 0; to: 360; dur: 4000; easing: linear; loop: true');
+        anchor.appendChild(model);
+      }
+
       scene.appendChild(anchor);
     });
 
@@ -409,12 +449,20 @@
           setStatus('found', t.name ? `${t.name} detectado ✓` : 'Imagen detectada ✓');
           arGuide.classList.add('found');
           btnVerMas.classList.add('visible');
+          if (anchor.dataset.videoId) {
+            const vid = document.getElementById(anchor.dataset.videoId);
+            if (vid) vid.play().catch(() => {});
+          }
         });
 
         anchor.addEventListener('targetLost', () => {
           setStatus('searching');
           arGuide.classList.remove('found');
           btnVerMas.classList.remove('visible');
+          if (anchor.dataset.videoId) {
+            const vid = document.getElementById(anchor.dataset.videoId);
+            if (vid) vid.pause();
+          }
         });
       });
 
