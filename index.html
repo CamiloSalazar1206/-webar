@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Experiencia AR</title>
 
-  <!-- MindAR + Three.js (el Compiler está incluido en el prod bundle) -->
+  <!-- MindAR: image bundle (expone Compiler) + Three.js integration -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -537,6 +538,15 @@
        FUNCIÓN PRINCIPAL
     ════════════════════════════════════════ */
     async function iniciarAR() {
+      // Guardia: verificar que MindAR cargó correctamente
+      if (!window.MINDAR?.IMAGE?.Compiler) {
+        alert(
+          'Error: No se pudo cargar la biblioteca MindAR.\n\n' +
+          'Revisa tu conexión a internet y recarga la página.'
+        );
+        return;
+      }
+
       hide(screenLanding);
       show(screenLoader);
 
