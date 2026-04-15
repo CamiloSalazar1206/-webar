@@ -238,7 +238,7 @@
     scene.setAttribute('mindar-image',
       `imageTargetSrc: ${mindUrl}; autoStart: false;` +
       ' uiLoading: no; uiError: no; uiScanning: no;' +
-      ' filterMinCF: 0.001; filterBeta: 50; warmupTolerance: 2; missTolerance: 8;'
+      ' filterMinCF: 0.0001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 10;'
     );
     scene.setAttribute('color-space', 'sRGB');
     scene.setAttribute('renderer', 'colorManagement: true; physicallyCorrectLights: true');
