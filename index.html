@@ -199,6 +199,15 @@
 </div>
 
 <script>
+  /* ══════════════════════════════════════════════════
+     CONFIGURACIÓN
+     Cambia PROJECT_ID por el ID real de tu proyecto.
+     Cuando no hay backend (modo local) usa los archivos
+     locales como fallback.
+  ══════════════════════════════════════════════════ */
+  const API_BASE   = 'http://localhost:3001/api';
+  const PROJECT_ID = null; // ← pegar aquí el UUID del proyecto cuando exista
+
   const screenLanding = document.getElementById('screen-landing');
   const screenLoader  = document.getElementById('screen-loader');
   const screenAr      = document.getElementById('screen-ar');
@@ -214,19 +223,20 @@
   const show = el => el.classList.remove('hidden');
   const hide = el => el.classList.add('hidden');
 
-  function setStatus(state) {
+  function setStatus(state, label) {
     arStatus.className = state;
-    arStatusText.textContent = state === 'found' ? 'Imagen detectada ✓' : 'Buscando imagen...';
+    arStatusText.textContent = label || (state === 'found' ? 'Imagen detectada ✓' : 'Buscando imagen...');
   }
 
-  /* ─────────────────────────────────────────
-     Crea la <a-scene> dinámicamente con el mindUrl ya listo.
-     Así A-Frame la inicializa con el target correcto desde el inicio.
-  ───────────────────────────────────────── */
-  function crearEscena(mindUrl) {
+  /* ──────────────────────────────────────────────────
+     Crea la <a-scene> dinámicamente con los targets
+     recibidos del backend (o el fallback local).
+     targets: [{ targetIndex, model_url, scale, position, rotation }]
+  ────────────────────────────────────────────────── */
+  function crearEscena(mindUrl, targets) {
     const scene = document.createElement('a-scene');
     scene.setAttribute('mindar-image',
-      'imageTargetSrc: ' + mindUrl + '; autoStart: false;' +
+      `imageTargetSrc: ${mindUrl}; autoStart: false;` +
       ' uiLoading: no; uiError: no; uiScanning: no;' +
       ' filterMinCF: 0.001; filterBeta: 1000; warmupTolerance: 0; missTolerance: 5;'
     );
@@ -236,39 +246,119 @@
     scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
     scene.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
 
-    // Assets
-    const assets = document.createElement('a-assets');
-    const asset  = document.createElement('a-asset-item');
-    asset.id  = 'model-glb-dyn';
-    asset.src = './shiro-no-game-no-life.glb';
-    assets.appendChild(asset);
-    scene.appendChild(assets);
-
-    // Camera
+    // Cámara
     const cam = document.createElement('a-camera');
     cam.setAttribute('position', '0 0 0');
     cam.setAttribute('look-controls', 'enabled: false');
     scene.appendChild(cam);
 
-    // Target + modelo
-    const target = document.createElement('a-entity');
-    target.setAttribute('mindar-image-target', 'targetIndex: 0');
+    // Un anchor por target
+    targets.forEach((t, i) => {
+      const anchor = document.createElement('a-entity');
+      anchor.setAttribute('mindar-image-target', `targetIndex: ${t.targetIndex ?? i}`);
 
-    const model = document.createElement('a-entity');
-    model.id = 'ar-model';
-    model.setAttribute('gltf-model', 'url(./shiro-no-game-no-life.glb)');
-    model.setAttribute('position', '0 -0.5 0.1');
-    model.setAttribute('scale', '0.3 0.3 0.3');
-    model.setAttribute('rotation', '0 0 0');
-    model.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true');
-    target.appendChild(model);
-    scene.appendChild(target);
+      const model = document.createElement('a-entity');
+      model.dataset.targetIndex = t.targetIndex ?? i;
+      model.setAttribute('gltf-model', `url(${t.model_url})`);
+      model.setAttribute('position', t.position || '0 -0.5 0.1');
+      model.setAttribute('scale',    t.scale    || '0.3 0.3 0.3');
+      model.setAttribute('rotation', t.rotation || '0 0 0');
+      model.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true');
+      anchor.appendChild(model);
+      scene.appendChild(anchor);
+    });
 
-    // Insertar ANTES del div de UI
     screenAr.insertBefore(scene, screenAr.firstChild);
     return scene;
   }
 
+  /* ──────────────────────────────────────────────────
+     Obtener config del backend o usar fallback local
+  ────────────────────────────────────────────────── */
+  async function obtenerConfig() {
+    if (PROJECT_ID) {
+      const res = await fetch(`${API_BASE}/project/${PROJECT_ID}`);
+      if (!res.ok) throw new Error('No se pudo cargar el proyecto');
+      return await res.json();
+      // { mind_url, targets: [{targetIndex, image_url, model_url, scale, position, rotation}] }
+    }
+    // Modo local: un solo target con archivos locales
+    return {
+      mind_url: null,
+      targets: [{
+        targetIndex: 0,
+        image_url: './flyer.jpg',
+        model_url: './shiro-no-game-no-life.glb',
+        scale:    '0.3 0.3 0.3',
+        position: '0 -0.5 0.1',
+        rotation: '0 0 0'
+      }]
+    };
+  }
+
+  /* ──────────────────────────────────────────────────
+     Compilar .mind en browser a partir de las imágenes
+     del proyecto (cuando no hay mind_url en backend)
+  ────────────────────────────────────────────────── */
+  async function compilarTargets(targets) {
+    const CACHE_KEY = PROJECT_ID ? `ar_mind_${PROJECT_ID}` : 'ar_mind_local_v1';
+
+    // Intentar cache local
+    const cached = (() => { try { return localStorage.getItem(CACHE_KEY); } catch(e){} })();
+    if (cached) {
+      loaderText.textContent = 'Cargando desde caché...';
+      const bytes = Uint8Array.from(atob(cached), c => c.charCodeAt(0));
+      return {
+        mindUrl: URL.createObjectURL(new Blob([bytes.buffer], { type: 'application/octet-stream' })),
+        fromCache: true
+      };
+    }
+
+    // Cargar imágenes
+    const images = await Promise.all(targets.map((t, i) => new Promise((res, rej) => {
+      loaderText.textContent = `Cargando imagen ${i + 1} de ${targets.length}...`;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload  = () => res(img);
+      img.onerror = () => rej(new Error(`No se pudo cargar: ${t.image_url}`));
+      img.src = t.image_url;
+    })));
+
+    // Compilar
+    const compiler = new MINDAR.IMAGE.Compiler();
+    await compiler.compileImageTargets(images, p => {
+      loaderText.textContent = `Compilando${targets.length > 1 ? ' targets' : ''}... ${Math.round(p * 100)}%`;
+    });
+    const buffer = await compiler.exportData();
+
+    // Guardar en cache local
+    try {
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      localStorage.setItem(CACHE_KEY, b64);
+    } catch(e) {}
+
+    // Si hay backend, subir el .mind para que otros usuarios no recompilen
+    if (PROJECT_ID) {
+      try {
+        loaderText.textContent = 'Guardando en servidor...';
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        await fetch(`${API_BASE}/project/${PROJECT_ID}/mind`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mindBuffer: b64 })
+        });
+      } catch(e) { /* no crítico */ }
+    }
+
+    return {
+      mindUrl: URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
+      fromCache: false
+    };
+  }
+
+  /* ══════════════════════════════════════════════════
+     EVENTOS
+  ══════════════════════════════════════════════════ */
   btnVerMas.addEventListener('click', () => show(modalVerMas));
   btnModalClose.addEventListener('click', () => hide(modalVerMas));
 
@@ -277,43 +367,26 @@
     show(screenLoader);
 
     try {
-      /* ── 1. Compilar target en memoria con el Compiler de MindAR ── */
-      document.querySelector('.loader-text').textContent = 'Compilando imagen...';
+      /* 1. Obtener config */
+      loaderText.textContent = 'Cargando proyecto...';
+      const config = await obtenerConfig();
 
-      const CACHE_KEY = 'ar_mind_v3';
+      /* 2. Resolver .mind (del backend o compilar) */
       let mindUrl;
-
-      const cached = (() => { try { return localStorage.getItem(CACHE_KEY); } catch(e){} })();
-      if (cached) {
-        document.querySelector('.loader-text').textContent = 'Cargando desde caché...';
-        const bytes = Uint8Array.from(atob(cached), c => c.charCodeAt(0));
-        mindUrl = URL.createObjectURL(new Blob([bytes.buffer], { type: 'application/octet-stream' }));
+      if (config.mind_url) {
+        loaderText.textContent = 'Descargando target compilado...';
+        mindUrl = config.mind_url;
       } else {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = './flyer.jpg';
-        await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('No se encontró flyer.jpg')); });
-
-        const compiler = new MINDAR.IMAGE.Compiler();
-        await compiler.compileImageTargets([img], p => {
-          loaderText.textContent = 'Compilando... ' + Math.round(p * 100) + '%';
-        });
-        const buffer = await compiler.exportData();
-
-        try {
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-          localStorage.setItem(CACHE_KEY, b64);
-        } catch(e) {}
-
-        mindUrl = URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' }));
+        const result = await compilarTargets(config.targets);
+        mindUrl = result.mindUrl;
       }
 
-      /* ── 2. Crear la escena A-Frame dinámicamente con el target compilado ── */
+      /* 3. Crear escena A-Frame con todos los targets */
       show(screenAr);
       loaderText.textContent = 'Iniciando cámara...';
-      const arScene = crearEscena(mindUrl);
+      const arScene = crearEscena(mindUrl, config.targets);
 
-      /* ── 3. Esperar a que A-Frame cargue ── */
+      /* 4. Esperar A-Frame */
       await new Promise(resolve => {
         if (arScene.hasLoaded) return resolve();
         arScene.addEventListener('loaded', resolve, { once: true });
@@ -322,27 +395,27 @@
       hide(screenLoader);
       setStatus('searching');
 
-      /* ── 4. Arrancar MindAR ── */
+      /* 5. Arrancar MindAR */
       const mindarSystem = arScene.systems['mindar-image-system'];
       await mindarSystem.start();
 
-      /* Eventos de tracking */
-      const targetEl = document.querySelector('[mindar-image-target]');
-      const modelEl  = document.getElementById('ar-model');
+      /* 6. Eventos por cada anchor */
+      config.targets.forEach((t, i) => {
+        const anchors = arScene.querySelectorAll('[mindar-image-target]');
+        const anchor  = anchors[i];
+        if (!anchor) return;
 
-      targetEl.addEventListener('targetFound', () => {
-        modelEl.setAttribute('visible', 'true');
-        modelEl.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true');
-        setStatus('found');
-        arGuide.classList.add('found');
-        btnVerMas.classList.add('visible');
-      });
+        anchor.addEventListener('targetFound', () => {
+          setStatus('found', t.name ? `${t.name} detectado ✓` : 'Imagen detectada ✓');
+          arGuide.classList.add('found');
+          btnVerMas.classList.add('visible');
+        });
 
-      targetEl.addEventListener('targetLost', () => {
-        modelEl.setAttribute('visible', 'true'); // MindAR oculta el anchor, no necesitamos ocultarlo
-        setStatus('searching');
-        arGuide.classList.remove('found');
-        btnVerMas.classList.remove('visible');
+        anchor.addEventListener('targetLost', () => {
+          setStatus('searching');
+          arGuide.classList.remove('found');
+          btnVerMas.classList.remove('visible');
+        });
       });
 
     } catch (err) {
@@ -350,16 +423,14 @@
       hide(screenLoader);
       hide(screenAr);
       show(screenLanding);
-      alert(
-        '❌ No se pudo iniciar la experiencia AR.\n\n' +
-        (err?.message || err) + '\n\n' +
-        'Verifica que:\n' +
-        '• flyer.jpg y shiro-no-game-no-life.glb están junto a index.html\n' +
-        '• Estás en Chrome con permiso de cámara habilitado'
-      );
+      alert('❌ Error: ' + (err?.message || err));
     }
   });
 </script>
+
+
+</body>
+</html>
 
 </body>
 </html>
