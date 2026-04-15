@@ -256,10 +256,10 @@
 
     const model = document.createElement('a-entity');
     model.id = 'ar-model';
-    model.setAttribute('gltf-model', '#model-glb-dyn');
-    model.setAttribute('position', '0 0 0');
+    model.setAttribute('gltf-model', 'url(./shiro-no-game-no-life.glb)');
+    model.setAttribute('position', '0 0 0.1');
     model.setAttribute('scale', '0.3 0.3 0.3');
-    model.setAttribute('visible', 'false');
+    model.setAttribute('rotation', '0 0 0');
     model.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true');
     target.appendChild(model);
     scene.appendChild(target);
@@ -332,13 +332,14 @@
 
       targetEl.addEventListener('targetFound', () => {
         modelEl.setAttribute('visible', 'true');
+        modelEl.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true');
         setStatus('found');
         arGuide.classList.add('found');
         btnVerMas.classList.add('visible');
       });
 
       targetEl.addEventListener('targetLost', () => {
-        modelEl.setAttribute('visible', 'false');
+        modelEl.setAttribute('visible', 'true'); // MindAR oculta el anchor, no necesitamos ocultarlo
         setStatus('searching');
         arGuide.classList.remove('found');
         btnVerMas.classList.remove('visible');
