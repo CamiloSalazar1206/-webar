@@ -6,183 +6,138 @@
   <title>Experiencia AR</title>
 
   <!--
-    ╔══════════════════════════════════════════════════════════╗
-    ║  CARGA CORRECTA: Un solo script UMD que incluye         ║
-    ║  Three.js + MindAR + Compiler todo junto.               ║
-    ║  NO mezclar con mindar-image.prod.js (ES module puro)  ║
-    ╚══════════════════════════════════════════════════════════╝
+    ══════════════════════════════════════════════════════
+    SOLUCIÓN DEFINITIVA: A-Frame + MindAR via unpkg CDN
+    Esta es la integración oficial más estable.
+    No usa ES modules internos → sin SyntaxError.
+    ══════════════════════════════════════════════════════
   -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
+  <script src="https://unpkg.com/aframe@1.4.2/dist/aframe-master.min.js"></script>
+  <script src="https://unpkg.com/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --accent:   #7c3aed;
-      --accent2:  #a78bfa;
-      --bg:       #0f0f14;
-      --surface:  #1a1a24;
-      --text:     #f0f0f5;
-      --muted:    #8888aa;
-      --radius:   14px;
+      --accent:  #7c3aed;
+      --accent2: #a78bfa;
+      --bg:      #0f0f14;
+      --surface: #1a1a24;
+      --text:    #f0f0f5;
+      --muted:   #8888aa;
     }
 
-    html, body {
-      width: 100%; height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      overflow: hidden;
-    }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
 
     .hidden { display: none !important; }
 
-    /* ── Landing ── */
+    /* ── LANDING ── */
     #screen-landing {
-      position: fixed; inset: 0;
+      position: fixed; inset: 0; z-index: 100;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 20px; padding: 32px;
+      gap: 20px; padding: 32px; text-align: center;
       background: var(--bg);
-      z-index: 10; text-align: center;
     }
-
     #screen-landing::before {
-      content: '';
-      position: absolute; inset: 0;
+      content: ''; position: absolute; inset: 0;
       background:
         radial-gradient(ellipse 60% 40% at 30% 20%, rgba(124,58,237,.25) 0%, transparent 70%),
         radial-gradient(ellipse 50% 50% at 75% 80%, rgba(167,139,250,.15) 0%, transparent 65%);
       pointer-events: none;
     }
-
-    .landing-icon { font-size: 72px; animation: float 3s ease-in-out infinite; }
+    .landing-icon { font-size: 72px; animation: float 3s ease-in-out infinite; position: relative; z-index: 1; }
     @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-
     .landing-title {
       font-size: 2rem; font-weight: 700; letter-spacing: -.5px;
       background: linear-gradient(135deg, #fff 30%, var(--accent2));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      position: relative; z-index: 1;
     }
-
-    .landing-subtitle { font-size: 1rem; color: var(--muted); max-width: 280px; line-height: 1.6; }
-
+    .landing-subtitle { font-size: 1rem; color: var(--muted); max-width: 280px; line-height: 1.6; position: relative; z-index: 1; }
     #btn-start {
       margin-top: 12px; padding: 16px 40px;
       font-size: 1.05rem; font-weight: 600; color: #fff;
       background: linear-gradient(135deg, var(--accent), #5b21b6);
       border: none; border-radius: 50px; cursor: pointer;
       box-shadow: 0 4px 24px rgba(124,58,237,.55);
-      transition: transform .15s, box-shadow .15s;
-      position: relative; z-index: 1;
+      transition: transform .15s, box-shadow .15s; position: relative; z-index: 1;
     }
     #btn-start:hover  { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,.7); }
     #btn-start:active { transform: translateY(1px);  box-shadow: 0 2px 12px rgba(124,58,237,.4); }
+    .landing-note { font-size: .78rem; color: var(--muted); opacity: .7; position: relative; z-index: 1; }
 
-    .landing-note { font-size: .78rem; color: var(--muted); opacity: .7; }
-
-    /* ── Loader ── */
+    /* ── LOADER ── */
     #screen-loader {
-      position: fixed; inset: 0;
+      position: fixed; inset: 0; z-index: 100;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 18px; background: var(--bg);
-      z-index: 10; padding: 32px; text-align: center;
+      gap: 18px; background: var(--bg); padding: 32px; text-align: center;
     }
-
     .loader-spinner {
       width: 52px; height: 52px;
       border: 4px solid var(--surface); border-top-color: var(--accent);
       border-radius: 50%; animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { font-size: 1rem; color: var(--muted); }
 
-    .loader-text { font-size: 1rem; color: var(--muted); letter-spacing: .3px; }
-
-    #progress-wrap {
-      width: 100%; max-width: 280px;
-      background: var(--surface); border-radius: 50px;
-      height: 6px; overflow: hidden;
+    /* ── AR OVERLAY ── */
+    #ar-ui {
+      position: fixed; inset: 0; z-index: 50;
+      pointer-events: none;
     }
-    #progress-bar {
-      height: 100%; width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 50px; transition: width .25s ease;
-    }
-    #progress-pct { font-size: .82rem; color: var(--accent2); font-variant-numeric: tabular-nums; }
-
-    /* ── AR Screen ── */
-    #screen-ar { position: fixed; inset: 0; z-index: 5; }
-
-    #ar-overlay-top {
-      position: fixed; top: 0; left: 0; right: 0;
-      padding: 18px 20px 14px;
-      display: flex; align-items: center; justify-content: space-between;
-      background: linear-gradient(to bottom, rgba(0,0,0,.65) 0%, transparent 100%);
-      z-index: 20; pointer-events: none;
-    }
-    #ar-title { font-size: .9rem; font-weight: 600; letter-spacing: .5px; color: #fff; opacity: .85; }
 
     #ar-status {
-      position: fixed; bottom: 110px; left: 50%;
+      position: absolute; bottom: 110px; left: 50%;
       transform: translateX(-50%);
       display: flex; align-items: center; gap: 10px;
       padding: 10px 20px;
-      background: rgba(15,15,20,.75); backdrop-filter: blur(10px);
+      background: rgba(15,15,20,.8); backdrop-filter: blur(10px);
       border: 1px solid rgba(255,255,255,.1); border-radius: 50px;
       font-size: .88rem; font-weight: 500; color: #fff;
-      z-index: 20; transition: all .35s ease; white-space: nowrap;
+      white-space: nowrap; pointer-events: none;
     }
-    #ar-status .dot {
-      width: 9px; height: 9px; border-radius: 50%;
-      flex-shrink: 0; background: var(--muted); transition: background .35s;
-    }
-    #ar-status.searching .dot {
-      background: #facc15; box-shadow: 0 0 6px #facc15;
-      animation: pulse-dot 1.2s ease-in-out infinite;
-    }
-    #ar-status.found .dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: none; }
-    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; transition: background .35s; }
+    #ar-status.searching .dot { background: #facc15; box-shadow: 0 0 6px #facc15; animation: pulse 1.2s ease-in-out infinite; }
+    #ar-status.found    .dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     #ar-guide {
-      position: fixed; top: 50%; left: 50%;
+      position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -58%);
       width: min(260px, 70vw); aspect-ratio: 1;
-      z-index: 20; pointer-events: none;
       opacity: .7; transition: opacity .4s;
     }
     #ar-guide.found { opacity: 0; }
     .corner { position: absolute; width: 22px; height: 22px; border-color: rgba(167,139,250,.85); border-style: solid; }
-    .corner.tl { top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0; }
-    .corner.tr { top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0; }
-    .corner.bl { bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px; }
-    .corner.br { bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0; }
+    .corner.tl { top:0; left:0;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+    .corner.tr { top:0; right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+    .corner.bl { bottom:0; left:0; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+    .corner.br { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
 
     #btn-ver-mas {
-      position: fixed; bottom: 48px; left: 50%;
+      position: absolute; bottom: 48px; left: 50%;
       transform: translateX(-50%) translateY(20px);
       padding: 14px 36px; font-size: 1rem; font-weight: 600; color: #fff;
       background: linear-gradient(135deg, var(--accent), #5b21b6);
       border: none; border-radius: 50px; cursor: pointer;
       box-shadow: 0 6px 28px rgba(124,58,237,.6);
-      z-index: 25; opacity: 0; pointer-events: none;
-      transition: opacity .4s ease, transform .4s ease, box-shadow .15s;
+      opacity: 0; pointer-events: none;
+      transition: opacity .4s ease, transform .4s ease;
     }
     #btn-ver-mas.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
-    #btn-ver-mas:hover  { box-shadow: 0 10px 36px rgba(124,58,237,.75); }
-    #btn-ver-mas:active { transform: translateX(-50%) scale(.96); }
 
-    /* ── Modal ── */
+    /* ── MODAL ── */
     #modal-ver-mas {
-      position: fixed; inset: 0;
+      position: fixed; inset: 0; z-index: 200;
       display: flex; align-items: flex-end; justify-content: center;
       background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
-      z-index: 30; padding: 20px;
+      padding: 20px;
     }
     .modal-card {
-      width: 100%; max-width: 420px;
-      background: var(--surface); border-radius: var(--radius) var(--radius) 12px 12px;
-      padding: 28px 24px 32px;
+      width: 100%; max-width: 420px; background: var(--surface);
+      border-radius: 14px 14px 12px 12px; padding: 28px 24px 32px;
       display: flex; flex-direction: column; gap: 14px;
       animation: slide-up .35s cubic-bezier(.22,1,.36,1);
     }
@@ -192,39 +147,65 @@
     #btn-modal-close {
       align-self: center; padding: 12px 32px;
       font-size: .95rem; font-weight: 600; color: var(--accent2);
-      background: rgba(124,58,237,.15);
-      border: 1px solid rgba(124,58,237,.3); border-radius: 50px;
-      cursor: pointer; transition: background .2s;
+      background: rgba(124,58,237,.15); border: 1px solid rgba(124,58,237,.3);
+      border-radius: 50px; cursor: pointer; transition: background .2s;
     }
     #btn-modal-close:hover { background: rgba(124,58,237,.28); }
+
+    /* Ocultar UI nativa de A-Frame */
+    .a-loader-title, .a-enter-vr,
+    [data-mindar-ui-overlay], [data-mindar-ui-scanning] { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- PANTALLA 1: Landing -->
-  <div id="screen-landing">
-    <div class="landing-icon">🔮</div>
-    <h1 class="landing-title">Experiencia AR</h1>
-    <p class="landing-subtitle">Apunta a la imagen para ver el contenido en realidad aumentada</p>
-    <button id="btn-start">Iniciar experiencia</button>
-    <p class="landing-note">Requiere cámara trasera · Chrome recomendado</p>
-  </div>
+<!-- ═══ PANTALLA 1: Landing ═══ -->
+<div id="screen-landing">
+  <div class="landing-icon">🔮</div>
+  <h1 class="landing-title">Experiencia AR</h1>
+  <p class="landing-subtitle">Apunta a la imagen para ver el contenido en realidad aumentada</p>
+  <button id="btn-start">Iniciar experiencia</button>
+  <p class="landing-note">Requiere cámara trasera · Chrome recomendado</p>
+</div>
 
-  <!-- PANTALLA 2: Loader -->
-  <div id="screen-loader" class="hidden">
-    <div class="loader-spinner"></div>
-    <p class="loader-text" id="loader-text">Preparando experiencia...</p>
-    <div id="progress-wrap" class="hidden">
-      <div id="progress-bar"></div>
-    </div>
-    <span id="progress-pct" class="hidden">0%</span>
-  </div>
+<!-- ═══ PANTALLA 2: Loader ═══ -->
+<div id="screen-loader" class="hidden">
+  <div class="loader-spinner"></div>
+  <p class="loader-text">Iniciando cámara AR...</p>
+</div>
 
-  <!-- PANTALLA 3: AR -->
-  <div id="screen-ar" class="hidden">
-    <div id="ar-overlay-top">
-      <span id="ar-title">Experiencia AR</span>
-    </div>
+<!-- ═══ PANTALLA 3: A-Frame Scene ═══ -->
+<div id="screen-ar" class="hidden" style="position:fixed;inset:0;z-index:10;">
+
+  <a-scene id="ar-scene"
+    mindar-image="imageTargetSrc: ./flyer.jpg; autoStart: false; uiLoading: no; uiError: no; uiScanning: no;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    style="width:100%;height:100%;"
+  >
+    <a-assets>
+      <a-asset-item id="model-glb" src="./shiro-no-game-no-life.glb"></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-entity
+        id="ar-model"
+        gltf-model="#model-glb"
+        position="0 0 0"
+        scale="0.3 0.3 0.3"
+        visible="false"
+        animation="property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true"
+      ></a-entity>
+    </a-entity>
+
+  </a-scene>
+
+  <!-- UI overlay -->
+  <div id="ar-ui">
     <div id="ar-guide">
       <div class="corner tl"></div>
       <div class="corner tr"></div>
@@ -238,215 +219,93 @@
     <button id="btn-ver-mas">Ver más</button>
   </div>
 
-  <!-- MODAL -->
-  <div id="modal-ver-mas" class="hidden">
-    <div class="modal-card">
-      <h2>Contenido AR</h2>
-      <p>Aquí puedes mostrar información adicional sobre el objeto detectado: descripción, precio, enlace a tienda, ficha técnica, etc.</p>
-      <button id="btn-modal-close">Cerrar</button>
-    </div>
+</div>
+
+<!-- ═══ MODAL ═══ -->
+<div id="modal-ver-mas" class="hidden">
+  <div class="modal-card">
+    <h2>Contenido AR</h2>
+    <p>Aquí puedes mostrar información adicional sobre el objeto detectado: descripción, precio, enlace a tienda, ficha técnica, etc.</p>
+    <button id="btn-modal-close">Cerrar</button>
   </div>
+</div>
 
-  <script>
-    /* ── Config ── */
-    const FLYER_PATH    = './flyer.jpg';
-    const MODEL_PATH    = './shiro-no-game-no-life.glb';
-    const CACHE_VERSION = 'v2';
-    const CACHE_KEY     = 'ar_target_' + CACHE_VERSION + '_' + FLYER_PATH;
+<script>
+  const screenLanding = document.getElementById('screen-landing');
+  const screenLoader  = document.getElementById('screen-loader');
+  const screenAr      = document.getElementById('screen-ar');
+  const arGuide       = document.getElementById('ar-guide');
+  const arStatus      = document.getElementById('ar-status');
+  const arStatusText  = document.getElementById('ar-status-text');
+  const btnVerMas     = document.getElementById('btn-ver-mas');
+  const modalVerMas   = document.getElementById('modal-ver-mas');
+  const btnStart      = document.getElementById('btn-start');
+  const btnModalClose = document.getElementById('btn-modal-close');
+  const arScene       = document.getElementById('ar-scene');
 
-    /* ── DOM refs ── */
-    const screenLanding = document.getElementById('screen-landing');
-    const screenLoader  = document.getElementById('screen-loader');
-    const screenAr      = document.getElementById('screen-ar');
-    const btnStart      = document.getElementById('btn-start');
-    const loaderText    = document.getElementById('loader-text');
-    const progressWrap  = document.getElementById('progress-wrap');
-    const progressBar   = document.getElementById('progress-bar');
-    const progressPct   = document.getElementById('progress-pct');
-    const arGuide       = document.getElementById('ar-guide');
-    const arStatus      = document.getElementById('ar-status');
-    const arStatusText  = document.getElementById('ar-status-text');
-    const btnVerMas     = document.getElementById('btn-ver-mas');
-    const modalVerMas   = document.getElementById('modal-ver-mas');
-    const btnModalClose = document.getElementById('btn-modal-close');
+  const show = el => el.classList.remove('hidden');
+  const hide = el => el.classList.add('hidden');
 
-    let animating = false;
+  function setStatus(state) {
+    arStatus.className = state;
+    arStatusText.textContent = state === 'found' ? 'Imagen detectada ✓' : 'Buscando imagen...';
+  }
 
-    /* ── Helpers ── */
-    const show = el => el.classList.remove('hidden');
-    const hide = el => el.classList.add('hidden');
-    const setMsg = msg => loaderText.textContent = msg;
+  btnVerMas.addEventListener('click', () => show(modalVerMas));
+  btnModalClose.addEventListener('click', () => hide(modalVerMas));
 
-    function setProgress(ratio) {
-      const pct = Math.round(ratio * 100);
-      progressBar.style.width = pct + '%';
-      progressPct.textContent = pct + '%';
-    }
+  btnStart.addEventListener('click', async () => {
+    hide(screenLanding);
+    show(screenLoader);
+    show(screenAr);
 
-    function setStatus(state) {
-      arStatus.className = state;
-      arStatusText.textContent = state === 'found' ? 'Imagen detectada ✓' : 'Buscando imagen...';
-    }
-
-    function bufferToBase64(buffer) {
-      const bytes = new Uint8Array(buffer);
-      let bin = '';
-      for (let i = 0; i < bytes.length; i += 8192)
-        bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
-      return btoa(bin);
-    }
-
-    function base64ToBuffer(b64) {
-      const bin = atob(b64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      return bytes.buffer;
-    }
-
-    /* ── Compilar / cachear target ── */
-    async function obtenerTargetBuffer() {
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) { setMsg('Cargando desde caché...'); return base64ToBuffer(cached); }
-      } catch(e) { localStorage.removeItem(CACHE_KEY); }
-
-      setMsg('Cargando imagen del flyer...');
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = FLYER_PATH;
-      await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('No se encontró "' + FLYER_PATH + '"')); });
-
-      setMsg('Compilando target AR...');
-      show(progressWrap); show(progressPct); setProgress(0);
-
-      const compiler = new window.MINDAR.IMAGE.Compiler();
-      await compiler.compileImageTargets([img], p => setProgress(p));
-      setProgress(1);
-
-      const buffer = await compiler.exportData();
-      try { localStorage.setItem(CACHE_KEY, bufferToBase64(buffer)); } catch(e) {}
-
-      hide(progressWrap); hide(progressPct);
-      return buffer;
-    }
-
-    /* ── Esperar que MindAR esté listo (UMD ya disponible de forma síncrona) ── */
-    function waitForMindAR() {
-      return new Promise((resolve, reject) => {
-        const MAX = 80; let n = 0; // 8 segundos máximo
-        const check = () => {
-          const ok = window.MINDAR?.IMAGE?.MindARThree && window.MINDAR?.IMAGE?.Compiler;
-          if (ok) return resolve();
-          if (++n >= MAX) return reject(new Error(
-            'MindAR no cargó correctamente.\n\n' +
-            'Comprueba tu conexión a internet y recarga la página.\n' +
-            'Si el error persiste, verifica que no hay un bloqueador de scripts activo.'
-          ));
-          setTimeout(check, 100);
-        };
-        check();
+    try {
+      /* Esperar a que A-Frame cargue la escena */
+      await new Promise(resolve => {
+        if (arScene.hasLoaded) return resolve();
+        arScene.addEventListener('loaded', resolve, { once: true });
       });
-    }
 
-    /* ── Eventos de UI ── */
-    btnStart.addEventListener('click', iniciarAR);
-    btnVerMas.addEventListener('click', () => show(modalVerMas));
-    btnModalClose.addEventListener('click', () => hide(modalVerMas));
+      hide(screenLoader);
+      setStatus('searching');
 
-    /* ════════════════════════════════════
-       FUNCIÓN PRINCIPAL
-    ════════════════════════════════════ */
-    async function iniciarAR() {
-      hide(screenLanding);
-      show(screenLoader);
-      setMsg('Cargando MindAR...');
+      /* Arrancar MindAR (autoStart: false → lo iniciamos aquí) */
+      const mindarSystem = arScene.systems['mindar-image-system'];
+      await mindarSystem.start();
 
-      try {
-        /* 1 · Esperar MindAR */
-        await waitForMindAR();
+      /* Eventos de tracking */
+      const targetEl = document.querySelector('[mindar-image-target]');
+      const modelEl  = document.getElementById('ar-model');
 
-        /* 2 · Compilar / cargar target */
-        const targetBuffer = await obtenerTargetBuffer();
+      targetEl.addEventListener('targetFound', () => {
+        modelEl.setAttribute('visible', 'true');
+        setStatus('found');
+        arGuide.classList.add('found');
+        btnVerMas.classList.add('visible');
+      });
 
-        /* 3 · Iniciar cámara */
-        setMsg('Iniciando cámara...');
-
-        const MindARThree = window.MINDAR.IMAGE.MindARThree;
-
-        const mindarThree = new MindARThree({
-          container:      screenAr,
-          imageTargetSrc: targetBuffer,
-          uiLoading:  'no',
-          uiError:    'no',
-          uiScanning: 'no',
-        });
-
-        const { renderer, scene, camera } = mindarThree;
-
-        /* 4 · Iluminación */
-        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        dirLight.position.set(1, 2, 1);
-        scene.add(dirLight);
-
-        /* 5 · Anchor */
-        const anchor = mindarThree.addAnchor(0);
-
-        /* 6 · Modelo 3D */
-        setMsg('Cargando modelo 3D...');
-        const loader = new THREE.GLTFLoader();
-        const gltf = await new Promise((res, rej) => loader.load(MODEL_PATH, res, undefined, rej));
-        const model = gltf.scene;
-        model.scale.set(0.5, 0.5, 0.5);
-        model.visible = false;
-        anchor.group.add(model);
-
-        /* 7 · Eventos tracking */
-        anchor.onTargetFound = () => {
-          model.visible = true;
-          animating = true;
-          setStatus('found');
-          arGuide.classList.add('found');
-          btnVerMas.classList.add('visible');
-        };
-
-        anchor.onTargetLost = () => {
-          model.visible = false;
-          animating = false;
-          setStatus('searching');
-          arGuide.classList.remove('found');
-          btnVerMas.classList.remove('visible');
-        };
-
-        /* 8 · Loop */
-        renderer.setAnimationLoop(() => {
-          if (animating) model.rotation.y += 0.012;
-          renderer.render(scene, camera);
-        });
-
-        /* 9 · Arrancar */
-        await mindarThree.start();
-
-        hide(screenLoader);
-        show(screenAr);
+      targetEl.addEventListener('targetLost', () => {
+        modelEl.setAttribute('visible', 'false');
         setStatus('searching');
+        arGuide.classList.remove('found');
+        btnVerMas.classList.remove('visible');
+      });
 
-      } catch (err) {
-        console.error('[AR Error]', err);
-        hide(screenLoader);
-        show(screenLanding);
-        alert(
-          '❌ No se pudo iniciar la experiencia AR.\n\n' +
-          (err.message || err) + '\n\n' +
-          'Verifica que:\n' +
-          '• flyer.jpg y el modelo .glb están en la misma carpeta que index.html\n' +
-          '• Estás usando un servidor local (no file://)\n' +
-          '• Diste permiso de cámara al navegador\n' +
-          '• Estás en Chrome (recomendado) con buena conexión'
-        );
-      }
+    } catch (err) {
+      console.error('[AR Error]', err);
+      hide(screenLoader);
+      hide(screenAr);
+      show(screenLanding);
+      alert(
+        '❌ No se pudo iniciar la experiencia AR.\n\n' +
+        (err?.message || err) + '\n\n' +
+        'Verifica que:\n' +
+        '• flyer.jpg y shiro-no-game-no-life.glb están junto a index.html\n' +
+        '• Estás en Chrome con permiso de cámara habilitado'
+      );
     }
-  </script>
+  });
+</script>
 
 </body>
 </html>
