@@ -168,35 +168,9 @@
   <p class="loader-text">Iniciando cámara AR...</p>
 </div>
 
-<!-- ═══ PANTALLA 3: A-Frame Scene ═══ -->
+<!-- ═══ PANTALLA 3: AR ═══ -->
 <div id="screen-ar" class="hidden" style="position:fixed;inset:0;z-index:10;">
-
-  <a-scene id="ar-scene"
-    mindar-image="imageTargetSrc: __PENDING__; autoStart: false; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 1000; warmupTolerance: 0; missTolerance: 5;"
-    color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-    style="width:100%;height:100%;"
-  >
-    <a-assets>
-      <a-asset-item id="model-glb" src="./shiro-no-game-no-life.glb"></a-asset-item>
-    </a-assets>
-
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-entity
-        id="ar-model"
-        gltf-model="#model-glb"
-        position="0 0 0"
-        scale="0.3 0.3 0.3"
-        visible="false"
-        animation="property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true"
-      ></a-entity>
-    </a-entity>
-
-  </a-scene>
+  <!-- a-scene se inyecta aquí dinámicamente DESPUÉS de compilar -->
 
   <!-- UI overlay -->
   <div id="ar-ui">
@@ -235,7 +209,7 @@
   const modalVerMas   = document.getElementById('modal-ver-mas');
   const btnStart      = document.getElementById('btn-start');
   const btnModalClose = document.getElementById('btn-modal-close');
-  const arScene       = document.getElementById('ar-scene');
+  const loaderText    = document.querySelector('.loader-text');
 
   const show = el => el.classList.remove('hidden');
   const hide = el => el.classList.add('hidden');
@@ -243,6 +217,56 @@
   function setStatus(state) {
     arStatus.className = state;
     arStatusText.textContent = state === 'found' ? 'Imagen detectada ✓' : 'Buscando imagen...';
+  }
+
+  /* ─────────────────────────────────────────
+     Crea la <a-scene> dinámicamente con el mindUrl ya listo.
+     Así A-Frame la inicializa con el target correcto desde el inicio.
+  ───────────────────────────────────────── */
+  function crearEscena(mindUrl) {
+    const scene = document.createElement('a-scene');
+    scene.setAttribute('mindar-image',
+      'imageTargetSrc: ' + mindUrl + '; autoStart: false;' +
+      ' uiLoading: no; uiError: no; uiScanning: no;' +
+      ' filterMinCF: 0.001; filterBeta: 1000; warmupTolerance: 0; missTolerance: 5;'
+    );
+    scene.setAttribute('color-space', 'sRGB');
+    scene.setAttribute('renderer', 'colorManagement: true; physicallyCorrectLights: true');
+    scene.setAttribute('vr-mode-ui', 'enabled: false');
+    scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
+    scene.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+
+    // Assets
+    const assets = document.createElement('a-assets');
+    const asset  = document.createElement('a-asset-item');
+    asset.id  = 'model-glb-dyn';
+    asset.src = './shiro-no-game-no-life.glb';
+    assets.appendChild(asset);
+    scene.appendChild(assets);
+
+    // Camera
+    const cam = document.createElement('a-camera');
+    cam.setAttribute('position', '0 0 0');
+    cam.setAttribute('look-controls', 'enabled: false');
+    scene.appendChild(cam);
+
+    // Target + modelo
+    const target = document.createElement('a-entity');
+    target.setAttribute('mindar-image-target', 'targetIndex: 0');
+
+    const model = document.createElement('a-entity');
+    model.id = 'ar-model';
+    model.setAttribute('gltf-model', '#model-glb-dyn');
+    model.setAttribute('position', '0 0 0');
+    model.setAttribute('scale', '0.3 0.3 0.3');
+    model.setAttribute('visible', 'false');
+    model.setAttribute('animation', 'property: rotation; to: 0 360 0; dur: 4000; easing: linear; loop: true');
+    target.appendChild(model);
+    scene.appendChild(target);
+
+    // Insertar ANTES del div de UI
+    screenAr.insertBefore(scene, screenAr.firstChild);
+    return scene;
   }
 
   btnVerMas.addEventListener('click', () => show(modalVerMas));
@@ -272,7 +296,7 @@
 
         const compiler = new MINDAR.IMAGE.Compiler();
         await compiler.compileImageTargets([img], p => {
-          document.querySelector('.loader-text').textContent = 'Compilando... ' + Math.round(p * 100) + '%';
+          loaderText.textContent = 'Compilando... ' + Math.round(p * 100) + '%';
         });
         const buffer = await compiler.exportData();
 
@@ -284,11 +308,10 @@
         mindUrl = URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' }));
       }
 
-      /* ── 2. Inyectar la URL compilada en la escena A-Frame ── */
-      arScene.setAttribute('mindar-image', 'imageTargetSrc', mindUrl);
-
+      /* ── 2. Crear la escena A-Frame dinámicamente con el target compilado ── */
       show(screenAr);
-      document.querySelector('.loader-text').textContent = 'Iniciando cámara...';
+      loaderText.textContent = 'Iniciando cámara...';
+      const arScene = crearEscena(mindUrl);
 
       /* ── 3. Esperar a que A-Frame cargue ── */
       await new Promise(resolve => {
