@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Experiencia AR</title>
 
-  <!-- Three.js -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/loaders/GLTFLoader.js"></script>
-
-  <!-- MindAR (incluye MindARThree + Compiler en un solo bundle) -->
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
+  <!--
+    ╔══════════════════════════════════════════════════════════╗
+    ║  CARGA CORRECTA: Un solo script UMD que incluye         ║
+    ║  Three.js + MindAR + Compiler todo junto.               ║
+    ║  NO mezclar con mindar-image.prod.js (ES module puro)  ║
+    ╚══════════════════════════════════════════════════════════╝
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
 
   <style>
-    /* ── Reset & base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -34,24 +35,18 @@
       overflow: hidden;
     }
 
-    /* ── Utility ── */
     .hidden { display: none !important; }
 
-    /* ════════════════════════════════════════
-       PANTALLA: Landing
-    ════════════════════════════════════════ */
+    /* ── Landing ── */
     #screen-landing {
       position: fixed; inset: 0;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 20px;
-      padding: 32px;
+      gap: 20px; padding: 32px;
       background: var(--bg);
-      z-index: 10;
-      text-align: center;
+      z-index: 10; text-align: center;
     }
 
-    /* Fondo animado */
     #screen-landing::before {
       content: '';
       position: absolute; inset: 0;
@@ -61,283 +56,152 @@
       pointer-events: none;
     }
 
-    .landing-icon {
-      font-size: 72px;
-      animation: float 3s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-12px); }
-    }
+    .landing-icon { font-size: 72px; animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
 
     .landing-title {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.5px;
+      font-size: 2rem; font-weight: 700; letter-spacing: -.5px;
       background: linear-gradient(135deg, #fff 30%, var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
-    .landing-subtitle {
-      font-size: 1rem;
-      color: var(--muted);
-      max-width: 280px;
-      line-height: 1.6;
-    }
+    .landing-subtitle { font-size: 1rem; color: var(--muted); max-width: 280px; line-height: 1.6; }
 
-    /* Botón principal */
     #btn-start {
-      margin-top: 12px;
-      padding: 16px 40px;
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: #fff;
+      margin-top: 12px; padding: 16px 40px;
+      font-size: 1.05rem; font-weight: 600; color: #fff;
       background: linear-gradient(135deg, var(--accent), #5b21b6);
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
+      border: none; border-radius: 50px; cursor: pointer;
       box-shadow: 0 4px 24px rgba(124,58,237,.55);
       transition: transform .15s, box-shadow .15s;
       position: relative; z-index: 1;
     }
-
     #btn-start:hover  { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,.7); }
     #btn-start:active { transform: translateY(1px);  box-shadow: 0 2px 12px rgba(124,58,237,.4); }
 
-    .landing-note {
-      font-size: .78rem;
-      color: var(--muted);
-      opacity: .7;
-    }
+    .landing-note { font-size: .78rem; color: var(--muted); opacity: .7; }
 
-    /* ════════════════════════════════════════
-       PANTALLA: Loader
-    ════════════════════════════════════════ */
+    /* ── Loader ── */
     #screen-loader {
       position: fixed; inset: 0;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 18px;
-      background: var(--bg);
-      z-index: 10;
-      padding: 32px;
-      text-align: center;
+      gap: 18px; background: var(--bg);
+      z-index: 10; padding: 32px; text-align: center;
     }
 
     .loader-spinner {
       width: 52px; height: 52px;
-      border: 4px solid var(--surface);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
+      border: 4px solid var(--surface); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .8s linear infinite;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .loader-text {
-      font-size: 1rem;
-      color: var(--muted);
-      letter-spacing: .3px;
-    }
+    .loader-text { font-size: 1rem; color: var(--muted); letter-spacing: .3px; }
 
-    /* Barra de progreso (compilación) */
     #progress-wrap {
       width: 100%; max-width: 280px;
-      background: var(--surface);
-      border-radius: 50px;
-      height: 6px;
-      overflow: hidden;
+      background: var(--surface); border-radius: 50px;
+      height: 6px; overflow: hidden;
     }
-
     #progress-bar {
-      height: 100%;
-      width: 0%;
+      height: 100%; width: 0%;
       background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 50px;
-      transition: width .25s ease;
+      border-radius: 50px; transition: width .25s ease;
     }
+    #progress-pct { font-size: .82rem; color: var(--accent2); font-variant-numeric: tabular-nums; }
 
-    #progress-pct {
-      font-size: .82rem;
-      color: var(--accent2);
-      font-variant-numeric: tabular-nums;
-    }
+    /* ── AR Screen ── */
+    #screen-ar { position: fixed; inset: 0; z-index: 5; }
 
-    /* ════════════════════════════════════════
-       PANTALLA: AR
-    ════════════════════════════════════════ */
-    #screen-ar {
-      position: fixed; inset: 0;
-      z-index: 5;
-    }
-
-    /* Overlay superior */
     #ar-overlay-top {
-      position: fixed;
-      top: 0; left: 0; right: 0;
+      position: fixed; top: 0; left: 0; right: 0;
       padding: 18px 20px 14px;
-      display: flex;
-      align-items: center; justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
       background: linear-gradient(to bottom, rgba(0,0,0,.65) 0%, transparent 100%);
-      z-index: 20;
-      pointer-events: none;
+      z-index: 20; pointer-events: none;
     }
+    #ar-title { font-size: .9rem; font-weight: 600; letter-spacing: .5px; color: #fff; opacity: .85; }
 
-    #ar-title {
-      font-size: .9rem;
-      font-weight: 600;
-      letter-spacing: .5px;
-      color: #fff;
-      opacity: .85;
-    }
-
-    /* Indicador de estado */
     #ar-status {
-      position: fixed;
-      bottom: 110px; left: 50%;
+      position: fixed; bottom: 110px; left: 50%;
       transform: translateX(-50%);
       display: flex; align-items: center; gap: 10px;
       padding: 10px 20px;
-      background: rgba(15,15,20,.75);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 50px;
-      font-size: .88rem;
-      font-weight: 500;
-      color: #fff;
-      z-index: 20;
-      transition: all .35s ease;
-      white-space: nowrap;
+      background: rgba(15,15,20,.75); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.1); border-radius: 50px;
+      font-size: .88rem; font-weight: 500; color: #fff;
+      z-index: 20; transition: all .35s ease; white-space: nowrap;
     }
-
     #ar-status .dot {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      background: var(--muted);
-      transition: background .35s;
+      width: 9px; height: 9px; border-radius: 50%;
+      flex-shrink: 0; background: var(--muted); transition: background .35s;
     }
-
     #ar-status.searching .dot {
-      background: #facc15;
-      box-shadow: 0 0 6px #facc15;
+      background: #facc15; box-shadow: 0 0 6px #facc15;
       animation: pulse-dot 1.2s ease-in-out infinite;
     }
+    #ar-status.found .dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: none; }
+    @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-    #ar-status.found .dot {
-      background: #4ade80;
-      box-shadow: 0 0 8px #4ade80;
-      animation: none;
-    }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .3; }
-    }
-
-    /* Marco de guía (esquinas) */
     #ar-guide {
-      position: fixed;
-      top: 50%; left: 50%;
+      position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -58%);
-      width: min(260px, 70vw);
-      aspect-ratio: 1;
-      z-index: 20;
-      pointer-events: none;
-      opacity: .7;
-      transition: opacity .4s;
+      width: min(260px, 70vw); aspect-ratio: 1;
+      z-index: 20; pointer-events: none;
+      opacity: .7; transition: opacity .4s;
     }
-
     #ar-guide.found { opacity: 0; }
+    .corner { position: absolute; width: 22px; height: 22px; border-color: rgba(167,139,250,.85); border-style: solid; }
+    .corner.tl { top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0; }
+    .corner.tr { top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0; }
+    .corner.bl { bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px; }
+    .corner.br { bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0; }
 
-    .corner {
-      position: absolute;
-      width: 22px; height: 22px;
-      border-color: rgba(167,139,250,.85);
-      border-style: solid;
-    }
-    .corner.tl { top: 0; left: 0;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-    .corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-    .corner.bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-    .corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
-
-    /* Botón flotante "Ver más" */
     #btn-ver-mas {
-      position: fixed;
-      bottom: 48px; left: 50%;
+      position: fixed; bottom: 48px; left: 50%;
       transform: translateX(-50%) translateY(20px);
-      padding: 14px 36px;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #fff;
+      padding: 14px 36px; font-size: 1rem; font-weight: 600; color: #fff;
       background: linear-gradient(135deg, var(--accent), #5b21b6);
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
+      border: none; border-radius: 50px; cursor: pointer;
       box-shadow: 0 6px 28px rgba(124,58,237,.6);
-      z-index: 25;
-      opacity: 0;
-      pointer-events: none;
+      z-index: 25; opacity: 0; pointer-events: none;
       transition: opacity .4s ease, transform .4s ease, box-shadow .15s;
     }
-
-    #btn-ver-mas.visible {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateX(-50%) translateY(0);
-    }
-
+    #btn-ver-mas.visible { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
     #btn-ver-mas:hover  { box-shadow: 0 10px 36px rgba(124,58,237,.75); }
     #btn-ver-mas:active { transform: translateX(-50%) scale(.96); }
 
-    /* Modal "Ver más" */
+    /* ── Modal ── */
     #modal-ver-mas {
       position: fixed; inset: 0;
       display: flex; align-items: flex-end; justify-content: center;
-      background: rgba(0,0,0,.5);
-      backdrop-filter: blur(4px);
-      z-index: 30;
-      padding: 20px;
+      background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
+      z-index: 30; padding: 20px;
     }
-
     .modal-card {
       width: 100%; max-width: 420px;
-      background: var(--surface);
-      border-radius: var(--radius) var(--radius) 12px 12px;
+      background: var(--surface); border-radius: var(--radius) var(--radius) 12px 12px;
       padding: 28px 24px 32px;
       display: flex; flex-direction: column; gap: 14px;
       animation: slide-up .35s cubic-bezier(.22,1,.36,1);
     }
-
-    @keyframes slide-up {
-      from { transform: translateY(100%); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-
+    @keyframes slide-up { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
     .modal-card h2 { font-size: 1.2rem; font-weight: 700; }
     .modal-card p  { font-size: .9rem; color: var(--muted); line-height: 1.6; }
-
     #btn-modal-close {
-      align-self: center;
-      padding: 12px 32px;
-      font-size: .95rem; font-weight: 600;
-      color: var(--accent2);
+      align-self: center; padding: 12px 32px;
+      font-size: .95rem; font-weight: 600; color: var(--accent2);
       background: rgba(124,58,237,.15);
-      border: 1px solid rgba(124,58,237,.3);
-      border-radius: 50px;
-      cursor: pointer;
-      transition: background .2s;
+      border: 1px solid rgba(124,58,237,.3); border-radius: 50px;
+      cursor: pointer; transition: background .2s;
     }
     #btn-modal-close:hover { background: rgba(124,58,237,.28); }
   </style>
 </head>
 <body>
 
-  <!-- ═══════════════════════════════════════
-       PANTALLA 1: Landing
-  ════════════════════════════════════════ -->
+  <!-- PANTALLA 1: Landing -->
   <div id="screen-landing">
     <div class="landing-icon">🔮</div>
     <h1 class="landing-title">Experiencia AR</h1>
@@ -346,9 +210,7 @@
     <p class="landing-note">Requiere cámara trasera · Chrome recomendado</p>
   </div>
 
-  <!-- ═══════════════════════════════════════
-       PANTALLA 2: Loader
-  ════════════════════════════════════════ -->
+  <!-- PANTALLA 2: Loader -->
   <div id="screen-loader" class="hidden">
     <div class="loader-spinner"></div>
     <p class="loader-text" id="loader-text">Preparando experiencia...</p>
@@ -358,66 +220,41 @@
     <span id="progress-pct" class="hidden">0%</span>
   </div>
 
-  <!-- ═══════════════════════════════════════
-       PANTALLA 3: AR (canvas se inyecta aquí)
-  ════════════════════════════════════════ -->
+  <!-- PANTALLA 3: AR -->
   <div id="screen-ar" class="hidden">
-
-    <!-- Overlay superior -->
     <div id="ar-overlay-top">
       <span id="ar-title">Experiencia AR</span>
     </div>
-
-    <!-- Marco guía de encuadre -->
     <div id="ar-guide">
       <div class="corner tl"></div>
       <div class="corner tr"></div>
       <div class="corner bl"></div>
       <div class="corner br"></div>
     </div>
-
-    <!-- Indicador de estado -->
     <div id="ar-status" class="searching">
       <span class="dot"></span>
       <span id="ar-status-text">Buscando imagen...</span>
     </div>
-
-    <!-- Botón flotante (aparece al detectar) -->
     <button id="btn-ver-mas">Ver más</button>
-
   </div>
 
-  <!-- ═══════════════════════════════════════
-       MODAL: Ver más
-  ════════════════════════════════════════ -->
+  <!-- MODAL -->
   <div id="modal-ver-mas" class="hidden">
     <div class="modal-card">
       <h2>Contenido AR</h2>
-      <p>
-        Aquí puedes mostrar información adicional sobre el objeto detectado:
-        descripción, precio, enlace a tienda, ficha técnica, etc.
-      </p>
+      <p>Aquí puedes mostrar información adicional sobre el objeto detectado: descripción, precio, enlace a tienda, ficha técnica, etc.</p>
       <button id="btn-modal-close">Cerrar</button>
     </div>
   </div>
 
-
-  <!-- ═══════════════════════════════════════
-       LÓGICA PRINCIPAL
-  ════════════════════════════════════════ -->
   <script>
-    /* ──────────────────────────────────────
-       CONFIGURACIÓN
-       Cambia solo estas dos constantes para
-       adaptar la experiencia a cualquier flyer.
-    ────────────────────────────────────── */
-    const FLYER_PATH    = './flyer.jpg'; // imagen a reconocer
-    const CACHE_VERSION = 'v1';          // incrementar para invalidar cache
+    /* ── Config ── */
+    const FLYER_PATH    = './flyer.jpg';
+    const MODEL_PATH    = './shiro-no-game-no-life.glb';
+    const CACHE_VERSION = 'v2';
+    const CACHE_KEY     = 'ar_target_' + CACHE_VERSION + '_' + FLYER_PATH;
 
-    /* ── Clave de cache en localStorage ── */
-    const CACHE_KEY = 'ar_target_' + CACHE_VERSION + '_' + FLYER_PATH;
-
-    /* ── Referencias DOM ── */
+    /* ── DOM refs ── */
     const screenLanding = document.getElementById('screen-landing');
     const screenLoader  = document.getElementById('screen-loader');
     const screenAr      = document.getElementById('screen-ar');
@@ -433,20 +270,14 @@
     const modalVerMas   = document.getElementById('modal-ver-mas');
     const btnModalClose = document.getElementById('btn-modal-close');
 
-    /* ── Estado ── */
-    let model     = null;
     let animating = false;
 
-    /* ────────────────────────────────────────
-       HELPERS
-    ──────────────────────────────────────── */
-    function show(el) { el.classList.remove('hidden'); }
-    function hide(el) { el.classList.add('hidden'); }
-
-    function setLoaderMsg(msg) { loaderText.textContent = msg; }
+    /* ── Helpers ── */
+    const show = el => el.classList.remove('hidden');
+    const hide = el => el.classList.add('hidden');
+    const setMsg = msg => loaderText.textContent = msg;
 
     function setProgress(ratio) {
-      /* ratio: 0.0 → 1.0 */
       const pct = Math.round(ratio * 100);
       progressBar.style.width = pct + '%';
       progressPct.textContent = pct + '%';
@@ -454,18 +285,14 @@
 
     function setStatus(state) {
       arStatus.className = state;
-      arStatusText.textContent =
-        state === 'found' ? 'Imagen detectada' : 'Buscando imagen...';
+      arStatusText.textContent = state === 'found' ? 'Imagen detectada ✓' : 'Buscando imagen...';
     }
 
-    /* ── Convertir ArrayBuffer ↔ Base64 para localStorage ── */
     function bufferToBase64(buffer) {
       const bytes = new Uint8Array(buffer);
       let bin = '';
-      const chunk = 8192;
-      for (let i = 0; i < bytes.length; i += chunk) {
-        bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
-      }
+      for (let i = 0; i < bytes.length; i += 8192)
+        bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
       return btoa(bin);
     }
 
@@ -476,135 +303,107 @@
       return bytes.buffer;
     }
 
-    /* ────────────────────────────────────────
-       COMPILAR TARGET EN RUNTIME
-       Usa el Compiler de MindAR para procesar
-       el flyer y obtener el ArrayBuffer que
-       normalmente sería el archivo .mind.
-    ──────────────────────────────────────── */
+    /* ── Compilar / cachear target ── */
     async function obtenerTargetBuffer() {
-      /* 1. Intentar leer desde cache */
       try {
         const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          setLoaderMsg('Cargando desde caché...');
-          return base64ToBuffer(cached);
-        }
-      } catch (e) {
-        localStorage.removeItem(CACHE_KEY); // cache corrupta, ignorar
-      }
+        if (cached) { setMsg('Cargando desde caché...'); return base64ToBuffer(cached); }
+      } catch(e) { localStorage.removeItem(CACHE_KEY); }
 
-      /* 2. Cargar la imagen del flyer */
-      setLoaderMsg('Cargando imagen del flyer...');
+      setMsg('Cargando imagen del flyer...');
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = FLYER_PATH;
-      await new Promise((res, rej) => {
-        img.onload  = res;
-        img.onerror = () => rej(new Error('No se encontró "' + FLYER_PATH + '"'));
-      });
+      await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('No se encontró "' + FLYER_PATH + '"')); });
 
-      /* 3. Compilar con el Compiler de MindAR */
-      setLoaderMsg('Compilando target...');
-      show(progressWrap);
-      show(progressPct);
-      setProgress(0);
+      setMsg('Compilando target AR...');
+      show(progressWrap); show(progressPct); setProgress(0);
 
       const compiler = new window.MINDAR.IMAGE.Compiler();
-      await compiler.compileImageTargets([img], (progress) => {
-        setProgress(progress);
-      });
-
+      await compiler.compileImageTargets([img], p => setProgress(p));
       setProgress(1);
+
       const buffer = await compiler.exportData();
+      try { localStorage.setItem(CACHE_KEY, bufferToBase64(buffer)); } catch(e) {}
 
-      /* 4. Guardar en localStorage (ignora si el storage está lleno) */
-      try {
-        localStorage.setItem(CACHE_KEY, bufferToBase64(buffer));
-      } catch (e) { /* sin cache, no es crítico */ }
-
-      hide(progressWrap);
-      hide(progressPct);
+      hide(progressWrap); hide(progressPct);
       return buffer;
     }
 
-    /* ────────────────────────────────────────
-       EVENTOS DE UI
-    ──────────────────────────────────────── */
+    /* ── Esperar que MindAR esté listo (UMD ya disponible de forma síncrona) ── */
+    function waitForMindAR() {
+      return new Promise((resolve, reject) => {
+        const MAX = 80; let n = 0; // 8 segundos máximo
+        const check = () => {
+          const ok = window.MINDAR?.IMAGE?.MindARThree && window.MINDAR?.IMAGE?.Compiler;
+          if (ok) return resolve();
+          if (++n >= MAX) return reject(new Error(
+            'MindAR no cargó correctamente.\n\n' +
+            'Comprueba tu conexión a internet y recarga la página.\n' +
+            'Si el error persiste, verifica que no hay un bloqueador de scripts activo.'
+          ));
+          setTimeout(check, 100);
+        };
+        check();
+      });
+    }
+
+    /* ── Eventos de UI ── */
     btnStart.addEventListener('click', iniciarAR);
     btnVerMas.addEventListener('click', () => show(modalVerMas));
     btnModalClose.addEventListener('click', () => hide(modalVerMas));
 
-    /* ════════════════════════════════════════
+    /* ════════════════════════════════════
        FUNCIÓN PRINCIPAL
-    ════════════════════════════════════════ */
+    ════════════════════════════════════ */
     async function iniciarAR() {
-      // Guardia: esperar hasta que el módulo ES (diferido) haya expuesto Compiler
-      // El módulo corre después del DOM parse; si el usuario hace clic muy rápido,
-      // esperamos hasta 5 s con polling de 100 ms.
-      await new Promise((resolve, reject) => {
-        const MAX = 50; let n = 0;
-        const check = () => {
-          const MindARThree = window.MINDAR?.IMAGE?.MindARThree;
-          const Compiler    = window.MINDAR?.IMAGE?.Compiler;
-          if (MindARThree && Compiler) return resolve();
-          if (++n >= MAX) return reject(new Error('MindAR no cargó a tiempo. Revisa tu conexión y recarga.'));
-          setTimeout(check, 100);
-        };
-        check();
-      }).catch(err => { alert(err.message); throw err; });
-
       hide(screenLanding);
       show(screenLoader);
+      setMsg('Cargando MindAR...');
 
       try {
-        /* ── Obtener target (desde cache o compilando) ── */
+        /* 1 · Esperar MindAR */
+        await waitForMindAR();
+
+        /* 2 · Compilar / cargar target */
         const targetBuffer = await obtenerTargetBuffer();
 
-        /* ── Iniciar cámara ── */
-        setLoaderMsg('Iniciando cámara...');
+        /* 3 · Iniciar cámara */
+        setMsg('Iniciando cámara...');
 
-        const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        const MindARThree = window.MINDAR.IMAGE.MindARThree;
+
+        const mindarThree = new MindARThree({
           container:      screenAr,
-          imageTargetSrc: targetBuffer, // ArrayBuffer en lugar de .mind
+          imageTargetSrc: targetBuffer,
           uiLoading:  'no',
           uiError:    'no',
-          uiScanning: 'no'
+          uiScanning: 'no',
         });
 
         const { renderer, scene, camera } = mindarThree;
 
-        /* ── Iluminación ── */
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.4));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        /* 4 · Iluminación */
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
         dirLight.position.set(1, 2, 1);
         scene.add(dirLight);
 
-        /* ── Anchor (primer target, índice 0) ── */
+        /* 5 · Anchor */
         const anchor = mindarThree.addAnchor(0);
 
-        /* ── Cargar modelo 3D ── */
-        setLoaderMsg('Cargando modelo 3D...');
+        /* 6 · Modelo 3D */
+        setMsg('Cargando modelo 3D...');
         const loader = new THREE.GLTFLoader();
+        const gltf = await new Promise((res, rej) => loader.load(MODEL_PATH, res, undefined, rej));
+        const model = gltf.scene;
+        model.scale.set(0.5, 0.5, 0.5);
+        model.visible = false;
+        anchor.group.add(model);
 
-        await new Promise((resolve, reject) => {
-          loader.load(
-            './model.glb',
-            (gltf) => {
-              model = gltf.scene;
-              model.scale.set(0.5, 0.5, 0.5);
-              model.visible = false; // oculto hasta detectar la imagen
-              anchor.group.add(model);
-              resolve();
-            },
-            undefined,
-            reject
-          );
-        });
-
-        /* ── Eventos de tracking ── */
+        /* 7 · Eventos tracking */
         anchor.onTargetFound = () => {
-          if (model) model.visible = true;
+          model.visible = true;
           animating = true;
           setStatus('found');
           arGuide.classList.add('found');
@@ -612,20 +411,20 @@
         };
 
         anchor.onTargetLost = () => {
-          if (model) model.visible = false;
+          model.visible = false;
           animating = false;
           setStatus('searching');
           arGuide.classList.remove('found');
           btnVerMas.classList.remove('visible');
         };
 
-        /* ── Loop de animación ── */
+        /* 8 · Loop */
         renderer.setAnimationLoop(() => {
-          if (animating && model) model.rotation.y += 0.012;
+          if (animating) model.rotation.y += 0.012;
           renderer.render(scene, camera);
         });
 
-        /* ── Arrancar MindAR (activa cámara real) ── */
+        /* 9 · Arrancar */
         await mindarThree.start();
 
         hide(screenLoader);
@@ -633,17 +432,18 @@
         setStatus('searching');
 
       } catch (err) {
+        console.error('[AR Error]', err);
         hide(screenLoader);
         show(screenLanding);
         alert(
-          'No se pudo iniciar la experiencia AR.\n\n' +
+          '❌ No se pudo iniciar la experiencia AR.\n\n' +
+          (err.message || err) + '\n\n' +
           'Verifica que:\n' +
-          '• flyer.jpg y model.glb están en la misma carpeta\n' +
-          '• Usas un servidor local (no file://)\n' +
-          '• Diste permiso de cámara\n\n' +
-          'Error: ' + err.message
+          '• flyer.jpg y el modelo .glb están en la misma carpeta que index.html\n' +
+          '• Estás usando un servidor local (no file://)\n' +
+          '• Diste permiso de cámara al navegador\n' +
+          '• Estás en Chrome (recomendado) con buena conexión'
         );
-        console.error('[AR]', err);
       }
     }
   </script>
